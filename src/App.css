@@ -9,10 +9,7 @@
   background-color: #000000;
   background-position: center;
   text-align: center;
-}
-.title{
-  font-family: 'Game of Thrones', cursive;
-  margin-top: 0px;
+  padding: 30px;
 }
 .dropdownButton{
   font-family: 'Game of Thrones', cursive;
@@ -41,40 +38,31 @@
   grid-template-columns: repeat(10, 1fr);
   margin: auto;
 }
-.nullSquare{
-  border: 1px solid #fff;
-  /*background-color: #ff0000;*/
-  color: #ffffff;
-  text-align: center;
-  opacity: 0;
-}
-.nullSquare:hover{
-  color: #ffffff;
-  opacity: 1;
-  transition: 1s;
-}
 .square{
   border: 1px solid #fff;
   /*background-color: #ff0000;*/
   color: #ffffff;
   text-align: center;
+  position: relative;
   /*opacity: .75;*/
 }
-.square:hover{
+/* .square:hover{
   color: #ffffff;
   opacity: 1;
   transition: 1s;
-}
+} */
 .face{
-  /*max-height: 50px;*/
+  max-width: 50px;
+  max-height: 50px;
   /*margin-top: 50px;*/
   display: block;
   margin: auto;
   width: 100%;
+  position: absolute;
 }
 
 .glow {
-  padding-top: 20px;
+  padding-top: 0px;
   margin-top: 0px;
   font-family: 'Game of Thrones', cursive;
   font-size: 80px;

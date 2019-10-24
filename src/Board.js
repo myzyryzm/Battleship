@@ -35,7 +35,6 @@ class Board extends Component {
   constructor(props){
     super(props)
     this.state = {
-      squares: Array(100).fill(null),
       firstPlayer : {
         pieces: playerPieces[0],
         won : false,
@@ -54,6 +53,7 @@ class Board extends Component {
         hits: [],
         hitDirection: ""
       },
+      hoverSquares: Array(100).fill(0),
       showingBoard1: true,
       placingPiece: false,
       musicPlaying: false,
@@ -110,11 +110,27 @@ class Board extends Component {
   }
 
   checkIfWinner = () =>{
-
+    let {firstPlayer, secondPlayer} = this.state;
+    if(firstPlayer.pieces.hasLost()){
+      let secondWins = secondPlayer.wins + 1;
+      alert("You lost!")
+      secondPlayer["wins"] = secondWins;
+      secondPlayer["won"] = true;
+      this.setState({secondPlayer});
+      this.setState({gameOver: true});
+    }
+    else if(secondPlayer.pieces.hasLost()){
+      let firstWins = firstPlayer.wins + 1;
+      alert("You won!")
+      firstPlayer["wins"] = firstWins;
+      firstPlayer["won"] = true;
+      this.setState({firstPlayer});
+      this.setState({gameOver: true});
+    }
   }
 
   handleClick = (id) => {
-    let {gameStarted, placingPiece, firstPlayerTurn, firstPlayer, secondPlayer, gameOver} = this.state;
+    let {gameStarted, placingPiece, firstPlayerTurn, gameOver, showingBoard1} = this.state;
     if(gameOver){
       return;
     }
@@ -124,22 +140,26 @@ class Board extends Component {
       }
     }
     else {
-      if(firstPlayerTurn){
+      if(firstPlayerTurn && !showingBoard1){
         this.attackSquare(id);
       }
     }
   }
 
   attackSquare = (id) => {
-    let {firstPlayerTurn, secondPlayer} = this.state;
+    let {firstPlayerTurn, secondPlayer, gameOver} = this.state;
     if(firstPlayerTurn){
       let pieces = secondPlayer.pieces;
       if(pieces.canAttackPiece(id)){
-        alert(pieces.attackPiece(id, false));
+        let dex = pieces.attackPiece(id);
+        alert(this.getAlertText(dex, false));
+        this.checkIfWinner();
         secondPlayer["pieces"] = pieces;
         this.setState({secondPlayer})
         this.setState({firstPlayerTurn: false})
-        setTimeout(this.startAITurn(), 3000)
+        if(!gameOver){
+          setTimeout(this.startAITurn(), 3000)
+        }
       }
     }
   }
@@ -305,7 +325,19 @@ class Board extends Component {
       hits.push(nextGuess);
       hitDirection = guessDirection;
     }
-    alert(pieces.attackPiece(nextGuess, true));
+    if(hits.length === 0){
+      guesses = [];
+    }
+    let dex = pieces.attackPiece(nextGuess)
+    alert(this.getAlertText(dex, true));
+    this.checkIfWinner();
+    if(dex === 2){
+      hits = [];
+      guesses = [];
+      hitDirection = "";
+    }
+
+    console.log(hits,guesses,hitDirection);
     firstPlayer["pieces"] = pieces;
     this.setState({firstPlayer})
 
@@ -316,6 +348,18 @@ class Board extends Component {
     setTimeout(this.startUserTurn(), 1000)
   }
 
+  getAlertText = (dex, isOpponenet) => {
+    if(dex === 0){
+      return isOpponenet ? "Your opponent missed!" : "You missed you fool!";
+    }
+    if(dex === 1){
+      return isOpponenet ? "Your ship has been hit!" : "You hit their ship!";
+    }
+    if(dex === 2){
+      return isOpponenet ? "Your ship has been sunk!" : "You sank their ship!";
+    }
+  }
+
   startUserTurn = () => {
     this.setState({showingBoard1: false})
     this.setState({firstPlayerTurn: true})
@@ -323,16 +367,18 @@ class Board extends Component {
 
   resetGame = () => {
     let {firstPlayer, secondPlayer} = this.state;
-    firstPlayer["spaces"] = [];
+    let pieces1 = firstPlayer.pieces;
+    pieces1.reset();
+    firstPlayer["pieces"] = pieces1;
     firstPlayer["won"] = false;
-    secondPlayer["spaces"] = [];
-    secondPlayer["won"] = false;
-    let s = Array(9).fill(null);
-    this.setState({squares : s});
+    firstPlayer["currentPiece"] = 0;
     this.setState({firstPlayer});
+    let pieces2 = secondPlayer.pieces;
+    pieces2.reset();
+    secondPlayer["pieces"] = pieces2;
+    secondPlayer["won"] = false;
     this.setState({secondPlayer});
-    this.setState({firstPlayerTurn : true});
-    this.setState({gameOver : false});
+    this.setState({gameOver : false, firstPlayerTurn : true, gameStarted : false, showingBoard1: true, placingPiece: false});
   }
 
   chooseCharacter = (isFirst, character) =>{
@@ -362,8 +408,31 @@ class Board extends Component {
     if(pieces.canPlaceGamepiece(spaces)){
       pieces.addPiece(spaces, firstPlayer.currentPiece)
       firstPlayer["pieces"] = pieces;
+      this.setState({hoverSquares: Array(100).fill(0)})
       this.setState({firstPlayer})
       this.setState({placingPiece: true})
+    }
+  }
+
+  hoverOver = (id) => {
+    let {firstPlayer, hoverSquares} = this.state;
+    let pieces = firstPlayer.pieces;
+    let size = pieces.gamePieces[firstPlayer.currentPiece].size;
+    let spaces = [];
+    for(let i = 0; i < size; i++){
+      let dex = id + 10 * i
+      if(dex > 99){
+        return;
+      }
+      spaces.push(dex)
+    }
+    if(pieces.canPlaceGamepiece(spaces)){
+      let h = hoverSquares;
+      h = Array(100).fill(0);
+      for(let i = 0; i < spaces.length; i++){
+        h[spaces[i]] = 1;
+      }
+      this.setState({hoverSquares: h});
     }
   }
 
@@ -446,11 +515,16 @@ class Board extends Component {
     this.setState({musicPlaying:isPlaying});
   }
 
+  changeBoard = () => {
+    let nuShowBoard = !this.state.showingBoard1;
+    this.setState({showingBoard1: nuShowBoard});
+  }
+
   render(){
-    let {squares, firstPlayer, secondPlayer, gameOver, musicPlaying, showingBoard1} = this.state;
+    let {firstPlayer, secondPlayer, gameOver, musicPlaying, showingBoard1, placingPiece, gameStarted, hoverSquares} = this.state;
     let grid = fillArray.map((square,i) =>{
       return(
-        <Square key = {i.toString()} id = {i} firstPlayer = {firstPlayer.character} secondPlayer = {secondPlayer.character} firstVal = {firstPlayer.pieces.squares[i]} secondVal = {secondPlayer.pieces.squares[i]} showingBoard1 = {showingBoard1} handleClick = {this.handleClick}  />)
+        <Square key = {i.toString()} id = {i} firstPlayer = {firstPlayer.character} secondPlayer = {secondPlayer.character} firstVal = {firstPlayer.pieces.squares[i]} secondVal = {secondPlayer.pieces.squares[i]} hoverVal = {hoverSquares[i]} showingBoard1 = {showingBoard1} gameStarted = {gameStarted} placingPiece = {placingPiece} hoverOver = {this.hoverOver} handleClick = {this.handleClick}  />)
     })
     return (
       <div className = "backgroundStuff">
@@ -459,8 +533,9 @@ class Board extends Component {
         <Dropdown isFirst = {false} chooseCharacter = {this.chooseCharacter} currentCharacter = {secondPlayer.character}/>
         <button onClick = {this.resetGame} className = "resetButton">Reset</button>
         <button onClick = {this.playMusic} className = "resetButton">{musicPlaying ? "Stop Music": "Play Music"}</button>
-        {this.state.placingPiece ? (<button onClick = {this.rotatePiece} className = "resetButton">Rotate</button>): (null)}
-        {this.state.placingPiece ? (<button onClick = {this.confirmPlace} className = "resetButton">Confirm</button>): (null)}
+        {placingPiece ? (<button onClick = {this.rotatePiece} className = "resetButton">Rotate</button>): (null)}
+        {placingPiece ? (<button onClick = {this.confirmPlace} className = "resetButton">Confirm</button>): (null)}
+        {gameStarted ? (<button onClick = {this.changeBoard} className = "resetButton">{showingBoard1 ? "Show Opponent's Board" : "Show Your Board"}</button>): (null)}
         <div className = "grid">
           {grid}
         </div>
