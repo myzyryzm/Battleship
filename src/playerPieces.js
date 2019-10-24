@@ -92,6 +92,22 @@ class PlayerPieces{
     this.originalSquares = this.squares;
   }
 
+  reset(){
+    this.gamePieces = [new Piece(2), new Piece(3), new Piece(3), new Piece(4), new Piece(5)];
+    this.squares = Array(100).fill(0);
+  }
+
+  hasLost(){
+    let lost = true;
+    for(let i = 0; i < this.gamePieces.length; i++){
+      if(!this.gamePieces[i].sunk){
+        lost = false;
+        break;
+      }
+    }
+    return lost;
+  }
+
   canPlaceGamepiece(arr){
     let canPlace = true;
     for(let i = 0; i < arr.length; i++){
@@ -114,9 +130,9 @@ class PlayerPieces{
     return this.squares[dex]<= 1;
   }
 
-  attackPiece(dex, isUser){
+  attackPiece(dex){
     let hasSunk = false;
-    let str = "";
+    let num = 0;
     if(this.squares[dex] === 1){
       for(let i = 0; i < this.gamePieces.length; i++){
         if(this.gamePieces[i].positions.includes(dex)){
@@ -125,16 +141,16 @@ class PlayerPieces{
         }
       }
       if(hasSunk){
-        str = isUser ? "Your ship has been sunk!" : "You sank their ship!";
+        num = 2;
       }
       else{
-        str = isUser ? "Your ship has been hi!" : "You hit their ship!";
+        num = 1;
       }
-    }else {
-      str = isUser ? "Your opponent missed!" : "You missed you fool!";
+    } else {
+      num = 0;
     }
     this.squares[dex]+=2;
-    return str;
+    return num;
   }
 
   canHitPiece(dex){

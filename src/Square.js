@@ -78,21 +78,55 @@ class Square extends Component {
       return blank;
     }
     else if(val === 1){
-      return board1 ? this.getPicture(firstPlayer) : this.getPicture(secondPlayer)
+      return board1 ? this.getPicture(firstPlayer) : blank;
     }
     else if(val === 2){
       return o;
     }
     else if(val === 3){
-      return x;
+      return board1 ? this.getPicture(firstPlayer) : this.getPicture(secondPlayer);
+    }
+    //return blank;
+  }
+
+  getSquareImage = () => {
+    const {placingPiece, gameStarted, firstVal, secondVal, hoverVal, firstPlayer, showingBoard1} = this.props;
+    if(!placingPiece && !gameStarted){
+      if(firstVal === 1 || hoverVal === 1){
+        return this.getPicture(firstPlayer);
+      } else {
+        return blank;
+      }
+    }
+    else{
+      if(showingBoard1){
+        return this.getSquareState(firstVal, true);
+      }
+      else {
+        return this.getSquareState(secondVal, false);
+      }
+    }
+  }
+
+  handleClick = () => {
+    const {id, handleClick} = this.props
+    return handleClick(id);
+  }
+
+  hoverOver = () => {
+    const {id, placingPiece, gameStarted, hoverOver} = this.props
+    if(!placingPiece && !gameStarted){
+      return hoverOver(id);
     }
   }
 
   render(){
-    const {id, handleClick, firstVal, secondVal, firstPlayer, secondPlayer, showingBoard1} = this.props
+    const {id, firstVal, secondVal, showingBoard1, gameStarted} = this.props
+
     return (
-      <div onClick={() =>handleClick(id)} className = {"square"}>
-        <img className = "face" src =  {showingBoard1 ? this.getSquareState(firstVal, true) : this.getSquareState(secondVal, false)} alt = {blank}></img>
+      <div onClick={this.handleClick} onMouseOver = {this.hoverOver} className = "square">
+        <img className = "face" src =  {this.getSquareImage()} alt = {blank}></img>
+        {gameStarted && ((showingBoard1 && firstVal === 3) || (!showingBoard1 && secondVal === 3)) ? (<img className = "face" src =  {x} alt = {blank}></img>) : (null)}
       </div>
     );
   }
