@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
 import './App.css';
 import blank from "./blank.png";
+import o from "./o.png";
+import x from "./x.png";
 import arya from "./faces/arya.png";
 import bran from "./faces/bran.png";
 import brienne from "./faces/brienne.png";
@@ -23,6 +25,7 @@ import tyrion from "./faces/tyrion.png";
 import varys from "./faces/varys.png";
 
 class Square extends Component {
+
   getPicture = (character) => {
     switch(character){
       case "Arya Stark":
@@ -68,11 +71,28 @@ class Square extends Component {
     }
     return jonSnow;
   }
+
+  getSquareState = (val, board1) => {
+    const {firstPlayer, secondPlayer} = this.props
+    if(val === 0){
+      return blank;
+    }
+    else if(val === 1){
+      return board1 ? this.getPicture(firstPlayer) : this.getPicture(secondPlayer)
+    }
+    else if(val === 2){
+      return o;
+    }
+    else if(val === 3){
+      return x;
+    }
+  }
+
   render(){
-    const {id, handleClick, val, firstPlayer, secondPlayer} = this.props
+    const {id, handleClick, firstVal, secondVal, firstPlayer, secondPlayer, showingBoard1} = this.props
     return (
-      <div onClick={() =>handleClick(id)} className = {val === null ? "square" : "square"}>
-        <img className = "face" src =  {val === 1 ? this.getPicture(firstPlayer) : val === 2 ? this.getPicture(secondPlayer) : blank} alt = {blank}></img>
+      <div onClick={() =>handleClick(id)} className = {"square"}>
+        <img className = "face" src =  {showingBoard1 ? this.getSquareState(firstVal, true) : this.getSquareState(secondVal, false)} alt = {blank}></img>
       </div>
     );
   }

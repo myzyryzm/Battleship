@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import Square from "./Square.js";
 import winningConditions from './winningConditions.js';
+import playerPieces from './playerPieces.js';
 import characters from "./characters.js";
 import './App.css';
 import Dropdown from './Dropdown.js';
@@ -26,32 +27,42 @@ import theon from "./faces/theon.png";
 import tyrion from "./faces/tyrion.png";
 import varys from "./faces/varys.png";
 import theme from "./theme.mp3";
+const audio  = new Audio(theme);
+const fillArray = Array(100).fill(null);
 
 class Board extends Component {
-  
+
   constructor(props){
     super(props)
     this.state = {
-      squares: Array(9).fill(null),
+      squares: Array(100).fill(null),
       firstPlayer : {
-        spaces: [],
+        pieces: playerPieces[0],
         won : false,
         character: characters[0],
-        wins: 0
+        wins: 0,
+        currentPiece: 0
       },
       secondPlayer : {
-        spaces: [],
+        pieces: playerPieces[1],
         won : false,
         character: characters[1],
         wins: 0
       },
+      ai: {
+        guesses: [],
+        hits: [],
+        hitDirection: ""
+      },
+      showingBoard1: true,
+      placingPiece: false,
       musicPlaying: false,
       firstPlayerTurn : true,
       gameOver: false,
-      audio : new Audio(theme)
+      gameStarted: false
     }
   }
-  
+
   getPicture = (character) => {
     switch(character){
       case "Arya Stark":
@@ -97,106 +108,219 @@ class Board extends Component {
     }
     return jonSnow;
   }
-  
+
   checkIfWinner = () =>{
-    let { firstPlayer, secondPlayer} = this.state;
-    let firstWon = false;
-    for(let i = 0; i < winningConditions.length; i++){
-      for(let j = 0; j < winningConditions[i].length; j++){
-        if(firstPlayer.spaces.includes(winningConditions[i][j])){
-          firstWon = true;
-        }
-        else {
-          firstWon = false;
-          break;
-        }
-      } 
-      if(firstWon){
-        break;
-      }
-    }
-    if(firstWon){
-      this.setState({gameOver: true});
-      firstPlayer["won"] = true;
-      let nuWins = firstPlayer.wins + 1;
-      firstPlayer["wins"] = nuWins;
-      this.setState({firstPlayer});
-      return;
-    }
-    
-    let secondWon = false;
-    for(let i = 0; i < winningConditions.length; i++){
-      for(let j = 0; j < winningConditions[i].length; j++){
-        if(secondPlayer.spaces.includes(winningConditions[i][j])){
-          secondWon = true;
-        }
-        else {
-          secondWon = false;
-          break;
-        }
-      }
-      if(secondWon){
-        break;
-      }
-    }
-    
-    if(secondWon){
-      this.setState({gameOver: true});
-      secondPlayer["won"] = true
-      let nuWins = secondPlayer.wins + 1;
-      secondPlayer["wins"] = nuWins;
-      this.setState({secondPlayer});
-      return;
-    }
-    const {squares} = this.state;
-    let endGame = true;
-    for(let i = 0; i < squares.length; i++){
-      if(squares[i] === null){
-        endGame = false;
-        break;
-      }
-    }
-    if(endGame){
-      this.setState({gameOver: true});
-    }
+
   }
-  
+
   handleClick = (id) => {
-    let {squares, firstPlayerTurn, firstPlayer, secondPlayer, gameOver} = this.state;
+    let {gameStarted, placingPiece, firstPlayerTurn, firstPlayer, secondPlayer, gameOver} = this.state;
     if(gameOver){
       return;
     }
-    let possibleClick = false;
-    let s = squares;
-    for(let i = 0; i < s.length; i++){
-      if(id === i){
-        if(s[i] === null){
-          possibleClick = true;
-          s[i] = firstPlayerTurn ? 1 : 2;
-          if(firstPlayerTurn){
-            let spa = firstPlayer.spaces;
-            spa.push(i);
-            firstPlayer["spaces"] = spa
-            this.setState({firstPlayer})
-          }
-          else {
-            let spa = secondPlayer.spaces;
-            spa.push(i);
-            secondPlayer["spaces"] = spa
-            this.setState({secondPlayer})
-          }
-        }
-        break;
+    if(!gameStarted){
+      if(!placingPiece){
+        this.placePiece(id)
       }
     }
-    if(possibleClick){
-      this.setState({squares: s});
-      let nuTurn = !firstPlayerTurn;
-      this.setState({firstPlayerTurn : nuTurn});
-      this.checkIfWinner();
+    else {
+      if(firstPlayerTurn){
+        this.attackSquare(id);
+      }
     }
   }
-  
+
+  attackSquare = (id) => {
+    let {firstPlayerTurn, secondPlayer} = this.state;
+    if(firstPlayerTurn){
+      let pieces = secondPlayer.pieces;
+      if(pieces.canAttackPiece(id)){
+        alert(pieces.attackPiece(id, false));
+        secondPlayer["pieces"] = pieces;
+        this.setState({secondPlayer})
+        this.setState({firstPlayerTurn: false})
+        setTimeout(this.startAITurn(), 3000)
+      }
+    }
+  }
+
+  startAITurn = () => {
+    this.setState({showingBoard1: true})
+    this.aiTurn();
+  }
+
+  getRandomGuess = () => {
+    let {firstPlayer} = this.state;
+    let squares = firstPlayer.pieces.squares;
+    let id = Math.floor(Math.random() * 100);
+    if(squares[id] <= 1){
+      return id;
+    }
+    return this.getRandomGuess();
+  }
+
+  aiTurn = () => {
+    const {ai,firstPlayer} = this.state;
+    let pieces = firstPlayer.pieces;
+    let hits = ai.hits;
+    let guesses = ai.guesses;
+    let hitDirection = ai.hitDirection;
+    let nextGuess = 0;
+    let guessDirection = "";
+
+    if(hits.length === 0) {
+      nextGuess = this.getRandomGuess();
+    }
+    else if(hits.length === guesses.length) {
+      let prevHit = hits[hits.length - 1];
+      if(hits.length === 1){
+        nextGuess = prevHit + 10;
+        if(prevHit < 90 && pieces.canAttackPiece(nextGuess)){
+          guessDirection = "Up";
+        }
+        else {
+          nextGuess = prevHit - 10;
+          guessDirection = "Down";
+        }
+      }
+      else {
+        let prevPrevHit = hits[hits.length - 2];
+        let diff = prevHit - prevPrevHit;
+        if(diff === 10){
+          nextGuess = prevHit + 10;
+          if(prevHit < 90 && pieces.canAttackPiece(nextGuess)){
+            guessDirection = "Up";
+          }
+          else{
+            nextGuess = hits[0] - 10;
+            guessDirection = "Down";
+          }
+        }
+        else if(diff === -10){
+          nextGuess = prevHit - 10;
+          if(prevHit > 9 && pieces.canAttackPiece(nextGuess)){
+            guessDirection = "Down";
+          }
+          else{
+            nextGuess = hits[0] + 10;
+            guessDirection = "Up";
+          }
+        }
+        else if(diff === 1){
+          let prevRemainder = prevHit % 10;
+          nextGuess = prevHit + 1;
+          if(prevRemainder != 9 && pieces.canAttackPiece(nextGuess)){
+            guessDirection = "Right";
+          }
+          else {
+            nextGuess = hits[0] - 1;
+            guessDirection = "Left";
+          }
+        }
+        else if(diff === -1){
+          let prevRemainder = prevHit % 10;
+          nextGuess = prevHit - 1;
+          if(prevRemainder != 0 && pieces.canAttackPiece(nextGuess)){
+            guessDirection = "Left";
+          }
+          else{
+            nextGuess = hits[0] + 1;
+            guessDirection = "Right";
+          }
+        }
+      }
+    }
+    else {
+      if(hits.length === 1){
+        let firstHit = hits[0];
+        let firstRem = firstHit % 10;
+        let canGuessUp = !hits.includes(firstHit + 10) && firstHit < 90 && pieces.canAttackPiece(firstHit + 10);
+        let canGuessDown = !hits.includes(firstHit - 10) && firstHit > 9 && pieces.canAttackPiece(firstHit - 10);
+        let canGuessRight = !hits.includes(firstHit + 1) && firstRem < 9 && pieces.canAttackPiece(firstHit + 1);
+        let canGuessLeft = !hits.includes(firstHit - 1) && firstRem > 0 && pieces.canAttackPiece(firstHit - 1);
+        if(canGuessUp){
+          nextGuess = firstHit + 10;
+          guessDirection = "Up";
+        }
+        else if(canGuessDown){
+          nextGuess = firstHit - 10;
+          guessDirection = "Down";
+        }
+        else if(canGuessRight){
+          nextGuess = firstHit + 1;
+          guessDirection = "Right";
+        }
+        else if(canGuessLeft){
+          nextGuess = firstHit - 1;
+          guessDirection = "Left";
+        }
+      }
+      else{
+        let prevHit = hits[hits.length - 1];
+        let prevPrevHit = hits[hits.length - 2];
+        let firstHit = hits[0];
+        let prevGuess = guesses[guesses.length - 1];
+        if(prevHit != prevGuess){
+          //switch directions
+          let vertical = hits.includes(firstHit + 10);
+          let horizontal = hits.includes(firstHit + 1);
+          if(vertical){
+            nextGuess = firstHit - 10;
+            guessDirection = "Down";
+          }
+          else{
+            nextGuess = firstHit - 1;
+            guessDirection = "Left";
+          }
+        }
+        else{
+          if(hitDirection === "Up"){
+
+          }
+          else if(hitDirection === "Down"){
+            guessDirection = "Down";
+            nextGuess = prevHit - 10;
+          }
+          else if(hitDirection === "Right"){
+            let rem = prevHit % 10;
+            if(rem < 9 && pieces.canAttackPiece(prevHit + 1)){
+              guessDirection = "Right";
+              nextGuess = prevHit + 1;
+            }
+            else{
+              guessDirection = "Left";
+              nextGuess = firstHit - 1;
+            }
+          }
+          else if(hitDirection === "Left"){
+            guessDirection = "Left";
+            nextGuess = prevHit - 1;
+          }
+        }
+      }
+    }
+    guesses.push(nextGuess);
+
+    if(pieces.canHitPiece(nextGuess)){
+      hits.push(nextGuess);
+      hitDirection = guessDirection;
+    }
+    alert(pieces.attackPiece(nextGuess, true));
+    firstPlayer["pieces"] = pieces;
+    this.setState({firstPlayer})
+
+    ai["hits"] = hits;
+    ai["guesses"] = guesses;
+    ai["hitDirection"] = hitDirection;
+    this.setState({ai});
+    setTimeout(this.startUserTurn(), 1000)
+  }
+
+  startUserTurn = () => {
+    this.setState({showingBoard1: false})
+    this.setState({firstPlayerTurn: true})
+  }
+
   resetGame = () => {
     let {firstPlayer, secondPlayer} = this.state;
     firstPlayer["spaces"] = [];
@@ -210,7 +334,7 @@ class Board extends Component {
     this.setState({firstPlayerTurn : true});
     this.setState({gameOver : false});
   }
-  
+
   chooseCharacter = (isFirst, character) =>{
     let {firstPlayer,secondPlayer} = this.state
     if(isFirst){
@@ -222,14 +346,95 @@ class Board extends Component {
       this.setState({secondPlayer});
     }
   }
-  
+
+  placePiece = (id) => {
+    let {firstPlayer} = this.state;
+    let pieces = firstPlayer.pieces;
+    let size = pieces.gamePieces[firstPlayer.currentPiece].size;
+    let spaces = [];
+    for(let i = 0; i < size; i++){
+      let dex = id + 10 * i
+      if(dex > 99){
+        return;
+      }
+      spaces.push(dex)
+    }
+    if(pieces.canPlaceGamepiece(spaces)){
+      pieces.addPiece(spaces, firstPlayer.currentPiece)
+      firstPlayer["pieces"] = pieces;
+      this.setState({firstPlayer})
+      this.setState({placingPiece: true})
+    }
+  }
+
+  rotatePiece = () =>{
+    let {firstPlayer} = this.state;
+    let pieces = firstPlayer.pieces;
+    pieces.rotatePiece(firstPlayer.currentPiece);
+    firstPlayer["pieces"] = pieces;
+    this.setState({firstPlayer});
+  }
+
+  confirmPlace = () => {
+    let {firstPlayer} = this.state;
+    let pieces = firstPlayer.pieces;
+    pieces.setOriginalSquares();
+    firstPlayer["currentPiece"] = firstPlayer.currentPiece + 1;
+    this.setState({firstPlayer});
+    this.setState({placingPiece: false});
+    if(firstPlayer.currentPiece >= pieces.gamePieces.length){
+      this.createAIBoard();
+    }
+  }
+
+  createAIBoard = () => {
+    for(let i = 0; i < 5; i++){
+      this.createAIPiece(i);
+    }
+    this.setState({gameStarted: true})
+    this.setState({showingBoard1: false})
+  }
+
+  createAIPiece = (dex) => {
+    let {secondPlayer} = this.state;
+    let pieces = secondPlayer.pieces;
+    let size = pieces.gamePieces[dex].size;
+    let spaces = [];
+    let canPlace = true;
+    let id = Math.floor(Math.random() * 100)
+    for(let i = 0; i < size; i++){
+      let dex = id + 10 * i
+      if(dex > 99){
+        canPlace = false;
+      }
+      spaces.push(dex)
+    }
+    if(!canPlace){
+      this.createAIPiece(dex);
+    }
+    else {
+      if(pieces.canPlaceGamepiece(spaces)){
+        pieces.addPiece(spaces, dex)
+        let numRot = Math.floor(Math.random() * 3)
+        for(let i = 0; i < numRot; i++){
+          pieces.rotatePiece(dex);
+        }
+        secondPlayer["pieces"] = pieces;
+        this.setState({secondPlayer})
+      }
+      else{
+        this.createAIPiece(dex);
+      }
+    }
+  }
+
   componentDidMount(){
-    this.state.audio.play();
+    audio.play();
     this.setState({musicPlaying:true});
   }
-  
+
   playMusic = () =>{
-    const{musicPlaying,audio} = this.state;
+    const{musicPlaying} = this.state;
     let isPlaying = musicPlaying;
     isPlaying = !isPlaying;
     if(isPlaying){
@@ -240,20 +445,22 @@ class Board extends Component {
     }
     this.setState({musicPlaying:isPlaying});
   }
-  
+
   render(){
-    let {squares, firstPlayer, secondPlayer, gameOver, musicPlaying} = this.state;
-    let grid = squares.map((square,i) =>{
+    let {squares, firstPlayer, secondPlayer, gameOver, musicPlaying, showingBoard1} = this.state;
+    let grid = fillArray.map((square,i) =>{
       return(
-        <Square key = {i.toString()} id = {i} firstPlayer = {firstPlayer.character} secondPlayer = {secondPlayer.character} val = {squares[i]} handleClick = {this.handleClick}  />)
+        <Square key = {i.toString()} id = {i} firstPlayer = {firstPlayer.character} secondPlayer = {secondPlayer.character} firstVal = {firstPlayer.pieces.squares[i]} secondVal = {secondPlayer.pieces.squares[i]} showingBoard1 = {showingBoard1} handleClick = {this.handleClick}  />)
     })
     return (
       <div className = "backgroundStuff">
-        <h1 className = "glow">{firstPlayer.won ? firstPlayer.character + " Won" : secondPlayer.won ? secondPlayer.character + " Won" : gameOver ? "It's a Tie" : "Game Of Thrones"}</h1>
+        <h1 className = "glow">{firstPlayer.won ? firstPlayer.character + " Won" : secondPlayer.won ? secondPlayer.character + " Won" : gameOver ? "It's a Tie" : "BattleThrones"}</h1>
         <Dropdown isFirst = {true} chooseCharacter = {this.chooseCharacter} currentCharacter = {firstPlayer.character}/>
         <Dropdown isFirst = {false} chooseCharacter = {this.chooseCharacter} currentCharacter = {secondPlayer.character}/>
         <button onClick = {this.resetGame} className = "resetButton">Reset</button>
-        <button onClick = {this.playMusic} className = "resetButton">{musicPlaying ? "Stop": "Play"}</button>
+        <button onClick = {this.playMusic} className = "resetButton">{musicPlaying ? "Stop Music": "Play Music"}</button>
+        {this.state.placingPiece ? (<button onClick = {this.rotatePiece} className = "resetButton">Rotate</button>): (null)}
+        {this.state.placingPiece ? (<button onClick = {this.confirmPlace} className = "resetButton">Confirm</button>): (null)}
         <div className = "grid">
           {grid}
         </div>
