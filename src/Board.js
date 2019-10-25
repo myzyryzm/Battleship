@@ -522,6 +522,7 @@ class Board extends Component {
 
   render(){
     let {firstPlayer, secondPlayer, gameOver, musicPlaying, showingBoard1, placingPiece, gameStarted, hoverSquares} = this.state;
+    console.log(window.innerWidth);
     let grid = fillArray.map((square,i) =>{
       return(
         <Square key = {i.toString()} id = {i} firstPlayer = {firstPlayer.character} secondPlayer = {secondPlayer.character} firstVal = {firstPlayer.pieces.squares[i]} secondVal = {secondPlayer.pieces.squares[i]} hoverVal = {hoverSquares[i]} showingBoard1 = {showingBoard1} gameStarted = {gameStarted} placingPiece = {placingPiece} hoverOver = {this.hoverOver} handleClick = {this.handleClick}  />)
@@ -529,8 +530,8 @@ class Board extends Component {
     return (
       <div className = "backgroundStuff">
         <h1 className = "glow">{firstPlayer.won ? firstPlayer.character + " Won" : secondPlayer.won ? secondPlayer.character + " Won" : gameOver ? "It's a Tie" : "BattleThrones"}</h1>
-        <Dropdown isFirst = {true} chooseCharacter = {this.chooseCharacter} currentCharacter = {firstPlayer.character}/>
-        <Dropdown isFirst = {false} chooseCharacter = {this.chooseCharacter} currentCharacter = {secondPlayer.character}/>
+        <Dropdown isFirst = {true} chooseCharacter = {this.chooseCharacter} currentCharacter = {firstPlayer.character} gameStarted = {gameStarted}/>
+        <Dropdown isFirst = {false} chooseCharacter = {this.chooseCharacter} currentCharacter = {secondPlayer.character} gameStarted = {gameStarted}/>
         <button onClick = {this.resetGame} className = "resetButton">Reset</button>
         <button onClick = {this.playMusic} className = "resetButton">{musicPlaying ? "Stop Music": "Play Music"}</button>
         {placingPiece ? (<button onClick = {this.rotatePiece} className = "resetButton">Rotate</button>): (null)}
