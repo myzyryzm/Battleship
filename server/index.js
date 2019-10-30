@@ -81,9 +81,9 @@ io.on('connection', socket => {
         key: session.getName()
       });
     }
-
     socket.emit('cursor', cursorPositions);
   }, Math.round(1000/30));
+  
     socket.on('cursor', data => {
       const session = sessions[data.sessionKey];
       session.resetTimer();

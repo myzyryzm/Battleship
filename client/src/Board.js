@@ -29,6 +29,7 @@ import varys from "./faces/varys.png";
 import theme from "./theme.mp3";
 const audio  = new Audio(theme);
 const fillArray = Array(100).fill(null);
+var currentPiece = 0;
 
 class Board extends Component {
 
@@ -39,8 +40,7 @@ class Board extends Component {
         pieces: playerPieces[0],
         won : false,
         character: characters[0],
-        wins: 0,
-        currentPiece: 0
+        wins: 0
       },
       secondPlayer : {
         pieces: playerPieces[1],
@@ -59,7 +59,8 @@ class Board extends Component {
       musicPlaying: false,
       firstPlayerTurn : true,
       gameOver: false,
-      gameStarted: false
+      gameStarted: false,
+      playingAI: false
     }
   }
 
@@ -147,7 +148,7 @@ class Board extends Component {
   }
 
   attackSquare = (id) => {
-    let {firstPlayerTurn, secondPlayer, gameOver} = this.state;
+    let {firstPlayerTurn, secondPlayer, gameOver, playingAI} = this.state;
     if(firstPlayerTurn){
       let pieces = secondPlayer.pieces;
       if(pieces.canAttackPiece(id)){
@@ -158,10 +159,19 @@ class Board extends Component {
         this.setState({secondPlayer})
         this.setState({firstPlayerTurn: false})
         if(!gameOver){
-          setTimeout(this.startAITurn(), 3000)
+          if(playingAI){
+            setTimeout(this.startAITurn(), 3000)
+          }
+          else{
+
+          }
         }
       }
     }
+  }
+
+  startOpponentTurn = () => {
+    this.setState({showingBoard1: true})
   }
 
   startAITurn = () => {
@@ -371,7 +381,7 @@ class Board extends Component {
     pieces1.reset();
     firstPlayer["pieces"] = pieces1;
     firstPlayer["won"] = false;
-    firstPlayer["currentPiece"] = 0;
+    currentPiece = 0;
     this.setState({firstPlayer});
     let pieces2 = secondPlayer.pieces;
     pieces2.reset();
@@ -396,7 +406,7 @@ class Board extends Component {
   placePiece = (id) => {
     let {firstPlayer} = this.state;
     let pieces = firstPlayer.pieces;
-    let size = pieces.gamePieces[firstPlayer.currentPiece].size;
+    let size = pieces.gamePieces[currentPiece].size;
     let spaces = [];
     for(let i = 0; i < size; i++){
       let dex = id + 10 * i
@@ -406,7 +416,7 @@ class Board extends Component {
       spaces.push(dex)
     }
     if(pieces.canPlaceGamepiece(spaces)){
-      pieces.addPiece(spaces, firstPlayer.currentPiece)
+      pieces.addPiece(spaces, currentPiece)
       firstPlayer["pieces"] = pieces;
       this.setState({hoverSquares: Array(100).fill(0)})
       this.setState({firstPlayer})
@@ -417,7 +427,7 @@ class Board extends Component {
   hoverOver = (id) => {
     let {firstPlayer, hoverSquares} = this.state;
     let pieces = firstPlayer.pieces;
-    let size = pieces.gamePieces[firstPlayer.currentPiece].size;
+    let size = pieces.gamePieces[currentPiece].size;
     let spaces = [];
     for(let i = 0; i < size; i++){
       let dex = id + 10 * i
@@ -439,7 +449,7 @@ class Board extends Component {
   rotatePiece = () =>{
     let {firstPlayer} = this.state;
     let pieces = firstPlayer.pieces;
-    pieces.rotatePiece(firstPlayer.currentPiece);
+    pieces.rotatePiece(currentPiece);
     firstPlayer["pieces"] = pieces;
     this.setState({firstPlayer});
   }
@@ -448,10 +458,9 @@ class Board extends Component {
     let {firstPlayer} = this.state;
     let pieces = firstPlayer.pieces;
     pieces.setOriginalSquares();
-    firstPlayer["currentPiece"] = firstPlayer.currentPiece + 1;
-    this.setState({firstPlayer});
-    this.setState({placingPiece: false});
-    if(firstPlayer.currentPiece >= pieces.gamePieces.length){
+    currentPiece++;
+    this.setState({firstPlayer, placingPiece: false});
+    if(currentPiece >= pieces.gamePieces.length){
       this.createAIBoard();
     }
   }
