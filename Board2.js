@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import io from 'socket.io-client'
 import './App.css';
 
-const serverAddress = 'http://localhost:8080';
+const serverAddress = 'http://localhost:3000';
 class Board2 extends Component {
   constructor(props){
     super(props)
@@ -32,7 +32,8 @@ class Board2 extends Component {
       musicPlaying: false,
       firstPlayerTurn : true,
       gameOver: false,
-      gameStarted: false
+      gameStarted: false,
+      joined: false
     }
   }
 
@@ -43,16 +44,19 @@ class Board2 extends Component {
       if(pieces.canAttackPiece(id)){
         let dex = pieces.attackPiece(id);
         alert(this.getAlertText(dex, false));
-        this.checkIfWinner();
         secondPlayer["pieces"] = pieces;
         this.setState({secondPlayer})
         this.setState({firstPlayerTurn: false})
+        this.checkIfWinner();
         if(!gameOver){
           if(playingAI){
             setTimeout(this.startAITurn(), 3000)
           }
           else{
-            
+            this.socket.emit('attack',{
+              target: dex,
+              sessionKey: window.localStorage.getItem('sessionKey')
+            });
           }
         }
       }
@@ -62,10 +66,10 @@ class Board2 extends Component {
   componentDidMount() {
     this.socket = io(serverAddress);
     this.socket.on('attack', data => {
-      if(!this.state.firstPlayerTurn) {
+      if(!this.state.firstPlayerTurn && this.state.joined) {
         let{firstPlayer} = this.state;
         let pieces = firstPlayer.pieces
-        let dex = pieces.attackPiece(nextGuess)
+        let dex = pieces.attackPiece(data.target)
         firstPlayer["pieces"] = pieces;
         this.setState({firstPlayer})
         alert(this.getAlertText(dex, true));
@@ -73,31 +77,14 @@ class Board2 extends Component {
         this.setState({firstPlayerTurn: true});
       }
     });
-    this.socket.on('cursor', data => {
-      if(this.state.loaded) {
-        this.setState({firstPlayerTurn: true});
-      }
-    });
-    setInterval(() => {
-      if(this.state.loaded) {
-        this.socket.emit('cursor', {
-          name: this.state.name,
-          x: this.state.mouseX,
-          y: this.state.mouseY,
-          sessionKey: window.localStorage.getItem('sessionKey')
-        });
-      }
-    }, 3000);
-    setInterval(() => {
-    }, Math.round(1000/60));
   }
   handleNameInput(e) {
     this.setState({name: e.target.value});
   }
-  handleJoin(e) {
+  handleJoin = (e) => {
     fetch(serverAddress + '/create_user', {
       body: JSON.stringify({
-        name: this.state.name
+        name: ""
       }),
       method: 'post',
       cache: 'no-cache',
@@ -109,15 +96,9 @@ class Board2 extends Component {
     .then(json => {
       if(json.success) {
         localStorage.sessionKey = json.sessionKey;
-        this.setState({loaded: true});
+        this.setState({joined: true});
       }
     });
-  }
-  handleToolClick(toolId) {
-    this.setState({toolId});
-  }
-  handleColorChange(color) {
-    this.setState({brushColor: color.rgb});
   }
   handleDisplayMouseMove(e) {
     this.setState({

@@ -27,14 +27,17 @@ import theon from "./faces/theon.png";
 import tyrion from "./faces/tyrion.png";
 import varys from "./faces/varys.png";
 import theme from "./theme.mp3";
+import io from 'socket.io-client'
 const audio  = new Audio(theme);
 const fillArray = Array(100).fill(null);
 var currentPiece = 0;
+const serverAddress = 'http://localhost:3000';
 
 class Board extends Component {
 
   constructor(props){
     super(props)
+    this.socket = null
     this.state = {
       firstPlayer : {
         pieces: playerPieces[0],
@@ -60,7 +63,7 @@ class Board extends Component {
       firstPlayerTurn : true,
       gameOver: false,
       gameStarted: false,
-      playingAI: false
+      playingAI: true
     }
   }
 
@@ -154,10 +157,10 @@ class Board extends Component {
       if(pieces.canAttackPiece(id)){
         let dex = pieces.attackPiece(id);
         alert(this.getAlertText(dex, false));
-        this.checkIfWinner();
         secondPlayer["pieces"] = pieces;
         this.setState({secondPlayer})
         this.setState({firstPlayerTurn: false})
+        this.checkIfWinner();
         if(!gameOver){
           if(playingAI){
             setTimeout(this.startAITurn(), 3000)
@@ -187,6 +190,26 @@ class Board extends Component {
       return id;
     }
     return this.getRandomGuess();
+  }
+
+  handleJoin = (e) => {
+    fetch(serverAddress + '/create_user', {
+      body: JSON.stringify({
+        name: ""
+      }),
+      method: 'post',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(json => {
+      if(json.success) {
+        localStorage.sessionKey = json.sessionKey;
+        this.setState({joined: true});
+      }
+    });
   }
 
   aiTurn = () => {
@@ -347,7 +370,6 @@ class Board extends Component {
       hitDirection = "";
     }
 
-    console.log(hits,guesses,hitDirection);
     firstPlayer["pieces"] = pieces;
     this.setState({firstPlayer})
 
@@ -507,6 +529,19 @@ class Board extends Component {
   }
 
   componentDidMount(){
+    this.socket = io(serverAddress);
+    this.socket.on('attack', data => {
+      if(!this.state.firstPlayerTurn && this.state.joined) {
+        let{firstPlayer} = this.state;
+        let pieces = firstPlayer.pieces
+        let dex = pieces.attackPiece(data.target)
+        firstPlayer["pieces"] = pieces;
+        this.setState({firstPlayer})
+        alert(this.getAlertText(dex, true));
+        this.checkIfWinner();
+        this.setState({firstPlayerTurn: true});
+      }
+    });
     audio.play();
     this.setState({musicPlaying:true});
   }
